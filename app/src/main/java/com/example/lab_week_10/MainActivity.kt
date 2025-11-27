@@ -5,18 +5,41 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import androidx.lifecycle.ViewModelProvider
+import com.example.lab_week_10.database.Total
+import com.example.lab_week_10.database.TotalDatabase
 import com.example.lab_week_10.viewmodels.TotalViewModel
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var db: TotalDatabase
     private val viewModel by lazy {
         ViewModelProvider(this)[TotalViewModel::class.java]
+    }
+
+    companion object {
+        const val ID: Long = 1
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        db = TotalDatabase.getInstance(this)
+        initializeValueFromDatabase()
         prepareViewModel()
+    }
+
+    private fun prepareDatabase(): TotalDatabase {
+        return TotalDatabase.getInstance(this)
+    }
+
+    private fun initializeValueFromDatabase() {
+        val total = db.totalDao().getTotal(ID)
+        if (total.isEmpty()) {
+            db.totalDao().insert(Total(id = ID, total = 0))
+            viewModel.setTotal(0)
+        } else {
+            viewModel.setTotal(total.first().total)
+        }
     }
 
     private fun updateText(total: Int) {
@@ -30,6 +53,13 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.button_increment).setOnClickListener {
             viewModel.incrementTotal()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        viewModel.total.value?.let { currentTotal ->
+            db.totalDao().update(Total(ID, currentTotal))
         }
     }
 }
