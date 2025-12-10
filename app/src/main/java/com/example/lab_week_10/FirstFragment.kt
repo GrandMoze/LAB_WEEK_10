@@ -1,37 +1,28 @@
 package com.example.lab_week_10
 
 import android.os.Bundle
+import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
-import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import com.example.lab_week_10.databinding.FragmentFirstBinding
 
 class FirstFragment : Fragment() {
 
-    private lateinit var textTotalFragment: TextView
-
-    private val viewModel: TotalViewModel by lazy {
-        ViewModelProvider(requireActivity())[TotalViewModel::class.java]
-    }
+    private var _binding: FragmentFirstBinding? = null
+    private val binding get() = _binding!!
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        val view = inflater.inflate(R.layout.fragment_first, container, false)
-        textTotalFragment = view.findViewById(R.id.text_total_fragment)
-        updateTotalText(viewModel.total)
-        return view
+    ): View {
+        _binding = FragmentFirstBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
-    fun refresh() {
-        updateTotalText(viewModel.total)
-    }
-
-    private fun updateTotalText(value: Int) {
-        textTotalFragment.text = "Total: $value"
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }

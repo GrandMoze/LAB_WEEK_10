@@ -1,68 +1,54 @@
 package com.example.lab_week_10
 
 import android.os.Bundle
-import android.widget.Button
-import android.widget.TextView
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.ViewModelProvider
-import androidx.room.Room
+import androidx.lifecycle.lifecycleScope
 import com.example.lab_week_10.database.Total
 import com.example.lab_week_10.database.TotalDatabase
+import com.example.lab_week_10.databinding.ActivityMainBinding
 import com.example.lab_week_10.viewmodels.TotalViewModel
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-    private val db by lazy { prepareDatabase() }
-    private val viewModel by lazy { ViewModelProvider(this)[TotalViewModel::class.java] }
+    private lateinit var binding: ActivityMainBinding
+    private val viewModel: TotalViewModel by viewModels()
+    private val dao by lazy { TotalDatabase.getDatabase(this).totalDao() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        initializeValueFromDatabase()
-        prepareViewModel()
-    }
+        observeTotal()
 
-    private fun updateText(total: Int) {
-        findViewById<TextView>(R.id.text_total).text =
-            getString(R.string.text_total, total)
-    }
-
-    private fun prepareViewModel() {
-        viewModel.total.observe(this) { total ->
-            updateText(total)
-        }
-
-        findViewById<Button>(R.id.button_increment).setOnClickListener {
-            viewModel.incrementTotal()
+        binding.buttonIncrement.setOnClickListener {
+            updateTotal()
         }
     }
 
-    private fun prepareDatabase(): TotalDatabase {
-        return Room.databaseBuilder(
-            applicationContext,
-            TotalDatabase::class.java,
-            "total-database"
-        ).allowMainThreadQueries().build()
-    }
-
-    private fun initializeValueFromDatabase() {
-        val result = db.totalDao().getTotal(ID)
-        if (result.isEmpty()) {
-            db.totalDao().insert(Total(ID, 0))
-        } else {
-            viewModel.setTotal(result.first().total)
+    private fun observeTotal() {
+        lifecycleScope.launch {
+            dao.getTotalFlow().collect {
+                binding.textTotal.text = "Total: ${it?.total ?: 0}"
+                binding.textTimestamp.text = "Last Updated: ${it?.timestamp ?: "-"}"
+            }
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-        db.totalDao().update(
-            Total(ID, viewModel.total.value!!)
-        )
-    }
+    private fun updateTotal() {
+        lifecycleScope.launch {
+            val saved = dao.getTotal()
+            val newTotal = (saved?.total ?: 0) + 1
 
-    companion object {
-        const val ID = 1L
+            val time = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+            val data = Total(1, newTotal, time)
+
+            dao.insert(data)
+        }
     }
 }
